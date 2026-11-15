@@ -41,13 +41,13 @@ export const DEFAULT_ROUTINE_RULES = [
     is_active: true
   },
   {
-    id: 'routine-faculdade-seg-qua',
-    title: 'aulas da faculdade',
+    id: 'routine-muay-thai-manha',
+    title: 'muay thai',
     subtitle: '',
-    tone: 'stone',
-    start_minutes: 10 * 60 + 30, // 10:30
-    end_minutes: 12 * 60 + 30,   // 12:30
-    days_of_week: [1, 3, 5],
+    tone: 'leather',
+    start_minutes: 10 * 60,      // 10:00
+    end_minutes: 11 * 60 + 30,   // 11:30
+    days_of_week: [3, 4],        // quarta e quinta
     marker_minutes: null,
     marker_label: null,
     is_active: true
@@ -59,7 +59,7 @@ export const DEFAULT_ROUTINE_RULES = [
     tone: 'leather',
     start_minutes: 13 * 60 + 30, // 13:30
     end_minutes: 15 * 60,        // 15:00
-    days_of_week: [1, 2, 3, 4, 5, 6], // exceto domingos
+    days_of_week: [1, 2, 5, 6],  // segunda, terça, sexta e sábado
     marker_minutes: null,
     marker_label: null,
     is_active: true
@@ -188,7 +188,8 @@ class AgendaDatabase {
   }
 
   async ensureSeedData(todayStr) {
-    // Atualiza sempre as regras de rotina fixa sem marcador de café nem subtítulo
+    await this.idbDelete('routine_rules', 'routine-faculdade-seg-qua');
+    // Atualiza sempre as regras de rotina fixa
     for (const rule of DEFAULT_ROUTINE_RULES) {
       await this.idbPut('routine_rules', rule);
     }
