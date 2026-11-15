@@ -193,66 +193,22 @@ class AgendaDatabase {
       await this.idbPut('routine_rules', rule);
     }
 
-    const seededFlag = localStorage.getItem('ma_wabi_sabi_seeded_v4');
-    if (!seededFlag) {
-      const sampleBlocks = [
-        {
-          id: `cat-${todayStr}-0900`,
-          date_str: todayStr,
-          category: 'Investigação',
-          task_name: 'revisão de fontes primárias',
-          start_minutes: 9 * 60,
-          end_minutes: 10 * 60 + 30,
-          rating: 4,
-          notified_end: true
-        },
-        {
-          id: `cat-${todayStr}-1530`,
-          date_str: todayStr,
-          category: 'Escrita',
-          task_name: 'rascunho do capítulo metodológico',
-          start_minutes: 15 * 60 + 30,
-          end_minutes: 17 * 60 + 30,
-          rating: null,
-          notified_end: false
-        },
-        {
-          id: `cat-${todayStr}-1800`,
-          date_str: todayStr,
-          category: 'Leitura',
-          task_name: 'estudo lento e notas de margem',
-          start_minutes: 18 * 60,
-          end_minutes: 19 * 60 + 30,
-          rating: null,
-          notified_end: false
+    // Limpa qualquer dummy data antiga que tenha ficado guardada localmente
+    const cleanedDummy = localStorage.getItem('ma_wabi_sabi_cleaned_dummy_v1');
+    if (!cleanedDummy) {
+      const allBlocks = await this.idbGetAll('category_blocks');
+      for (const b of allBlocks) {
+        if (/^cat-\d{4}-\d{2}-\d{2}-(0900|1530|1800)$/.test(b.id)) {
+          await this.deleteCategoryBlock(b.id);
         }
-      ];
-      for (const b of sampleBlocks) {
-        await this.idbPut('category_blocks', b);
       }
-
-      const sampleVoiceNote = {
-        id: `vn-${todayStr}-0942`,
-        date_str: todayStr,
-        recorded_minutes: 9 * 60 + 42,
-        recorded_time_label: '09:42',
-        duration_seconds: 28,
-        context_block: 'durante investigação',
-        poetic_title: 'arquitetura do silêncio funcional',
-        summary: 'a restrição deliberada de escolhas liberta a atenção para a profundidade do pensamento. focar a revisão bibliográfica apenas em três fontes primárias antes do treino.',
-        key_points: [
-          'isolar as três referências centrais do capítulo metodológico',
-          'sintetizar notas à mão antes de abrir o rascunho de escrita das 15:30',
-          'testar hipótese sobre ritmos ultradianos na sessão de amanhã'
-        ],
-        transcript: 'estava aqui a pensar durante a leitura dos artigos que quando tentamos abranger demasiadas fontes ao mesmo tempo perdemos o fio condutor. vou isolar apenas as três referências centrais do capítulo metodológico e sintetizar as notas à mão antes do bloco das 15:30.',
-        audio_url: null,
-        audio_data_url: null,
-        synced_cloud: false,
-        created_at: new Date().toISOString()
-      };
-      await this.idbPut('voice_notes', sampleVoiceNote);
-      localStorage.setItem('ma_wabi_sabi_seeded_v4', 'true');
+      const allNotes = await this.idbGetAll('voice_notes');
+      for (const vn of allNotes) {
+        if (/^vn-\d{4}-\d{2}-\d{2}-0942$/.test(vn.id)) {
+          await this.deleteVoiceNote(vn.id);
+        }
+      }
+      localStorage.setItem('ma_wabi_sabi_cleaned_dummy_v1', 'true');
     }
   }
 

@@ -219,8 +219,7 @@ class WabiSabiCalendarApp {
     const meta = this.getCategoryMeta(block.category);
 
     container.innerHTML = `
-      <div class="sheet-handle"></div>
-      <div class="text-center mb-4">
+      <div class="text-center mb-4 pt-1">
         <span class="text-xs text-[#85796C] block mb-0.5">bloco concluído</span>
         <h3 class="font-serif-editorial text-2xl font-semibold text-[#231C17]">${meta.label}</h3>
         ${block.task_name ? `<p class="text-xs text-[#6E6256] mt-0.5">${block.task_name}</p>` : ''}
@@ -518,8 +517,6 @@ class WabiSabiCalendarApp {
       const bottomTrim = hasNext ? 1.5 : 1;
       const top = (r.start_minutes - START_MIN) * PX_PER_MIN + topOffset;
       const height = Math.max(26, (r.end_minutes - r.start_minutes) * PX_PER_MIN - (topOffset + bottomTrim));
-      const durationMin = r.end_minutes - r.start_minutes;
-      const isCompact = durationMin <= 35;
 
       html += `
         <div
@@ -527,7 +524,7 @@ class WabiSabiCalendarApp {
           style="top: ${top}px; height: ${height}px;"
         >
           ${jointClass ? `<span class="w-1 h-3.5 rounded-full bg-[#DAE2DB]/35 mr-2.5 shrink-0"></span>` : ''}
-          <span class="font-serif-editorial ${isCompact ? 'text-base' : 'text-lg'} font-semibold tracking-tight truncate">
+          <span class="font-serif-editorial text-base font-semibold tracking-tight truncate">
             ${r.title.toLowerCase()}
           </span>
         </div>
@@ -946,8 +943,7 @@ class WabiSabiCalendarApp {
     const endOptions = this.getEndOptionsForDate(this.selectedDate, this.draftStartMin);
 
     container.innerHTML = `
-      <div class="sheet-handle"></div>
-      <div class="flex items-center justify-between border-b border-[#DED6C6] pb-3 mb-4">
+      <div class="flex items-center justify-between border-b border-[#DED6C6] pb-3 mb-4 pt-1">
         <button
           onclick="window.app.closeAllSheets()"
           class="text-xs font-medium text-[#786C5F] hover:text-[#231C17] px-2 py-1"
@@ -1366,9 +1362,7 @@ class WabiSabiCalendarApp {
     const keyPoints = Array.isArray(vn.key_points) ? vn.key_points : [];
 
     container.innerHTML = `
-      <div class="sheet-handle"></div>
-
-      <div class="flex items-center gap-2 border-b border-[#DED6C6] pb-3 mb-4">
+      <div class="flex items-center gap-2 border-b border-[#DED6C6] pb-3 mb-4 pt-1">
         <span class="w-2.5 h-2.5 rounded-full bg-[#C85A3C]"></span>
         <span class="text-xs font-mono font-semibold text-[#A9452A]">${vn.recorded_time_label}</span>
         <span class="text-xs px-2.5 py-0.5 rounded-full bg-[#EAE3D5] text-[#52463B] font-medium">${(vn.context_block || '').toLowerCase()}</span>
