@@ -1,0 +1,10 @@
+{
+  "name": "ma-wabi-sabi-agenda-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agenda minimalista Wabi-Sabi Editorial (PWA) com flow iOS Calendar, rotina indisputável (07h-22h), categorias puras e Voice Notes com Whisper + LLM + Supabase.",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "dev": "python3 -m http.server 4173"
+  }
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>ma · agenda wabi-sabi</title>
+
+  <!-- configuração pwa & ios standalone -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <meta name="theme-color" content="#F5F1E8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ma agenda" />
+
+  <!-- tailwind css + sistema de design wabi-sabi -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles/wabi-sabi.css" />
+</head>
+<body>
+  <!-- grão subtil de papel artesanal washi -->
+  <div class="washi-grain"></div>
+
+  <main class="app-shell">
+    <!-- cabeçalho minimalista (mês/ano na vista mensal | "< mês" + 3 dias na vista diária) -->
+    <header id="ios-header-root" class="ios-header px-4 py-3"></header>
+
+    <!-- vista diária: timeline restrita das 07:00 às 22:00 -->
+    <section id="day-view-container" class="timeline-viewport">
+      <div id="timeline-canvas" class="timeline-canvas"></div>
+    </section>
+
+    <!-- vista mensal minimalista estilo ios calendar -->
+    <section id="month-view-container" class="hidden flex-1 px-4 pt-3 pb-28 overflow-y-auto">
+      <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-[#786C5F] mb-2">
+        <span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span><span>dom</span>
+      </div>
+      <div id="month-calendar-grid" class="grid grid-cols-7 gap-1.5 mb-5"></div>
+
+      <!-- preview inferior do dia selecionado (lista apenas as voice notes) -->
+      <div id="month-day-preview" class="bg-[#EFEADE]/75 border border-[#DED6C6] rounded-2xl p-4"></div>
+    </section>
+
+    <!-- overlay que escurece o ecrã todo quando a gravação está ativa (exceto o botão redondo) -->
+    <div id="recording-dim-overlay" class="recording-dim-overlay"></div>
+
+    <!-- botão flutuante circular terracota no canto inferior esquerdo -->
+    <div id="voice-fab-root" class="voice-fab-container"></div>
+
+    <!-- backdrop e bottom-sheets estilo ios -->
+    <div id="sheet-backdrop" class="sheet-backdrop" onclick="window.app.closeAllSheets()"></div>
+
+    <!-- 1. sheet de configuração de categoria -->
+    <aside id="category-sheet" class="bottom-sheet">
+      <div id="category-sheet-content"></div>
+    </aside>
+
+    <!-- 2. sheet de síntese da voice note -->
+    <aside id="voicenote-sheet" class="bottom-sheet">
+      <div id="voicenote-sheet-content"></div>
+    </aside>
+
+    <!-- 3. sheet de avaliação de fim de bloco (0 a 5 estrelas) -->
+    <aside id="rating-sheet" class="bottom-sheet">
+      <div id="rating-sheet-content"></div>
+    </aside>
+
+    <!-- toast subtil -->
+    <div
+      id="wabi-toast"
+      class="fixed bottom-24 right-5 z-50 px-3.5 py-2 rounded-full bg-[#231C17] text-[#FAF7F0] text-xs font-medium shadow-lg pointer-events-none opacity-0 translate-y-4 transition-all duration-300"
+    ></div>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

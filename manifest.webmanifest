@@ -1,0 +1,19 @@
+{
+  "name": "Ma (間) · Agenda Editorial Wabi-Sabi",
+  "short_name": "Ma Agenda",
+  "description": "Agenda minimalista com restrições de rotina indisputável (07h–22h), categorias puras e notas de voz sintetizadas por AI.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F1E8",
+  "theme_color": "#F5F1E8",
+  "lang": "pt-PT",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="#F5F1E8"/>
+  <rect x="44" y="44" width="424" height="424" rx="92" fill="none" stroke="#DFD7C8" stroke-width="6"/>
+  <!-- Bloco denso Expresso -->
+  <rect x="96" y="108" width="320" height="76" rx="20" fill="#2A211B"/>
+  <!-- Bloco translúcido Salva -->
+  <rect x="96" y="208" width="320" height="104" rx="20" fill="#D7DDD0" stroke="#B7C1AE" stroke-width="4"/>
+  <!-- Linha e Ponto Terracota (Voice Note) -->
+  <line x1="80" y1="260" x2="432" y2="260" stroke="#C85A3C" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="376" cy="260" r="24" fill="#C85A3C" stroke="#F5F1E8" stroke-width="6"/>
+  <!-- Bloco Musgo Profundo (Wind Down) -->
+  <rect x="96" y="336" width="320" height="68" rx="20" fill="#29322A"/>
+</svg>
