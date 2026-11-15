@@ -99,18 +99,23 @@ class WabiSabiCalendarApp {
   }
 
   async init() {
+    window.app = this;
     const todayStr = formatDateISO(this.selectedDate);
     await agendaDB.ensureSeedData(todayStr);
-
-    if (agendaDB.hasSupabase()) {
-      await agendaDB.syncFromSupabase();
-    }
-
     await this.reloadData();
-    window.app = this;
     this.setupNotificationListeners();
     this.render();
     this.checkFinishedBlocks();
+
+    // Sincroniza com o Supabase em background sem bloquear a renderização inicial
+    if (agendaDB.hasSupabase()) {
+      agendaDB.syncFromSupabase().then(async (res) => {
+        if (res?.ok) {
+          await this.reloadData();
+          this.render();
+        }
+      });
+    }
 
     setInterval(() => {
       if (this.viewMode === 'day') this.renderTimeline();
@@ -862,19 +867,69 @@ class WabiSabiCalendarApp {
     this.renderCategorySheet();
   }
 
-  onTimeInputChange(field, value) {
+  onTimeInputChange(field, minsValue) {
     const inputEl = document.getElementById('draft-task-name-input');
     if (inputEl) this.draftTaskName = inputEl.value;
-    const mins = hhmmToMinutes(value);
+    const mins = typeof minsValue === 'number' ? minsValue : Number(minsValue);
+
     if (field === 'start') {
-      const dur = Math.max(30, this.draftEndMin - this.draftStartMin);
-      const snapped = this.snapIntervalAroundLockedBlocks(this.selectedDate, mins, dur);
-      this.draftStartMin = snapped.start;
-      this.draftEndMin = snapped.end;
+      const prevDur = Math.max(30, this.draftEndMin - this.draftStartMin);
+      this.draftStartMin = mins;
+      let desiredEnd = Math.min(WIND_DOWN_START, mins + prevDur);
+      const routines = this.getActiveRoutineForDate(this.selectedDate).sort(
+        (a, b) => a.start_minutes - b.start_minutes
+      );
+      for (const r of routines) {
+        if (r.start_minutes > mins && desiredEnd > r.start_minutes) {
+          desiredEnd = r.start_minutes;
+          break;
+        }
+      }
+      if (desiredEnd <= mins) {
+        desiredEnd = Math.min(WIND_DOWN_START, mins + 30);
+      }
+      this.draftEndMin = desiredEnd;
     } else {
       this.draftEndMin = Math.max(this.draftStartMin + 15, Math.min(WIND_DOWN_START, mins));
     }
     this.renderCategorySheet();
+  }
+
+  getStartOptionsForDate(dateObj) {
+    const routines = this.getActiveRoutineForDate(dateObj);
+    const options = [];
+    for (let m = START_MIN; m <= WIND_DOWN_START - 15; m += 15) {
+      const locked = routines.find((r) => m >= r.start_minutes && m < r.end_minutes);
+      options.push({
+        mins: m,
+        label: minutesToHHMM(m),
+        disabled: Boolean(locked),
+        lockedTitle: locked ? locked.title : null
+      });
+    }
+    return options;
+  }
+
+  getEndOptionsForDate(dateObj, startMin) {
+    const routines = this.getActiveRoutineForDate(dateObj).sort(
+      (a, b) => a.start_minutes - b.start_minutes
+    );
+    let maxEnd = WIND_DOWN_START;
+    for (const r of routines) {
+      if (r.start_minutes > startMin) {
+        maxEnd = Math.min(maxEnd, r.start_minutes);
+        break;
+      }
+    }
+    const options = [];
+    for (let m = startMin + 15; m <= WIND_DOWN_START; m += 15) {
+      options.push({
+        mins: m,
+        label: minutesToHHMM(m),
+        disabled: m > maxEnd
+      });
+    }
+    return options;
   }
 
   renderCategorySheet() {
@@ -886,6 +941,9 @@ class WabiSabiCalendarApp {
       this.draftStartMin,
       this.draftEndMin
     );
+
+    const startOptions = this.getStartOptionsForDate(this.selectedDate);
+    const endOptions = this.getEndOptionsForDate(this.selectedDate, this.draftStartMin);
 
     container.innerHTML = `
       <div class="sheet-handle"></div>
@@ -946,6 +1004,7 @@ class WabiSabiCalendarApp {
           <div class="flex gap-1.5">
             ${[45, 60, 90, 120].map((m) => `
               <button
+                type="button"
                 onclick="window.app.applyQuickDuration(${m})"
                 class="px-2 py-0.5 rounded-md text-xs font-medium border ${
                   this.draftEndMin - this.draftStartMin === m
@@ -960,29 +1019,46 @@ class WabiSabiCalendarApp {
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <div>
+          <div class="min-w-0">
             <label class="text-xs text-[#786C5F] block mb-1">início</label>
-            <input
-              type="time"
-              min="07:00"
-              max="19:45"
-              step="900"
-              value="${minutesToHHMM(this.draftStartMin)}"
-              onchange="window.app.onTimeInputChange('start', this.value)"
-              class="w-full px-3 py-2 rounded-xl bg-[#FAF7F0] border border-[#D4CBB9] text-sm font-mono text-[#231C17]"
-            />
+            <div class="relative flex items-center bg-[#FAF7F0] border border-[#D4CBB9] rounded-xl px-3 py-2.5">
+              <select
+                onchange="window.app.onTimeInputChange('start', Number(this.value))"
+                class="appearance-none bg-transparent w-full text-sm font-mono font-medium text-[#231C17] focus:outline-none pr-5"
+              >
+                ${startOptions.map((opt) => `
+                  <option
+                    value="${opt.mins}"
+                    ${opt.mins === this.draftStartMin ? 'selected' : ''}
+                    ${opt.disabled ? 'disabled' : ''}
+                  >
+                    ${opt.label}${opt.lockedTitle ? ` (${opt.lockedTitle})` : ''}
+                  </option>
+                `).join('')}
+              </select>
+              <span class="pointer-events-none absolute right-3 text-xs text-[#786C5F]">▾</span>
+            </div>
           </div>
-          <div>
+
+          <div class="min-w-0">
             <label class="text-xs text-[#786C5F] block mb-1">fim</label>
-            <input
-              type="time"
-              min="07:15"
-              max="20:00"
-              step="900"
-              value="${minutesToHHMM(this.draftEndMin)}"
-              onchange="window.app.onTimeInputChange('end', this.value)"
-              class="w-full px-3 py-2 rounded-xl bg-[#FAF7F0] border border-[#D4CBB9] text-sm font-mono text-[#231C17]"
-            />
+            <div class="relative flex items-center bg-[#FAF7F0] border border-[#D4CBB9] rounded-xl px-3 py-2.5">
+              <select
+                onchange="window.app.onTimeInputChange('end', Number(this.value))"
+                class="appearance-none bg-transparent w-full text-sm font-mono font-medium text-[#231C17] focus:outline-none pr-5"
+              >
+                ${endOptions.map((opt) => `
+                  <option
+                    value="${opt.mins}"
+                    ${opt.mins === this.draftEndMin ? 'selected' : ''}
+                    ${opt.disabled ? 'disabled' : ''}
+                  >
+                    ${opt.label}
+                  </option>
+                `).join('')}
+              </select>
+              <span class="pointer-events-none absolute right-3 text-xs text-[#786C5F]">▾</span>
+            </div>
           </div>
         </div>
 
