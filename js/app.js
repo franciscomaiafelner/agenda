@@ -496,18 +496,32 @@ class WabiSabiCalendarApp {
       `;
     }
 
-    // 3. Blocos de rotina fixa (não clicáveis, sem horas, sem subtítulo — apenas o título)
-    for (const r of routines) {
-      const top = (r.start_minutes - START_MIN) * PX_PER_MIN;
-      const height = Math.max(30, (r.end_minutes - r.start_minutes) * PX_PER_MIN);
+    // 3. Blocos de rotina fixa (não clicáveis, sem horas, sem subtítulo — articulados quando sequenciais)
+    for (let i = 0; i < routines.length; i++) {
+      const r = routines[i];
+      const prev = routines[i - 1];
+      const next = routines[i + 1];
+      const hasPrev = Boolean(prev && prev.end_minutes === r.start_minutes);
+      const hasNext = Boolean(next && r.end_minutes === next.start_minutes);
+
+      let jointClass = '';
+      if (!hasPrev && hasNext) jointClass = 'routine-joint-top';
+      else if (hasPrev && hasNext) jointClass = 'routine-joint-mid';
+      else if (hasPrev && !hasNext) jointClass = 'routine-joint-bottom';
+
+      const topOffset = hasPrev ? 1.5 : 1;
+      const bottomTrim = hasNext ? 1.5 : 1;
+      const top = (r.start_minutes - START_MIN) * PX_PER_MIN + topOffset;
+      const height = Math.max(26, (r.end_minutes - r.start_minutes) * PX_PER_MIN - (topOffset + bottomTrim));
       const durationMin = r.end_minutes - r.start_minutes;
       const isCompact = durationMin <= 35;
 
       html += `
         <div
-          class="routine-block routine-tone-${r.tone || 'espresso'}"
-          style="top: ${top + 1}px; height: ${height - 2}px;"
+          class="routine-block routine-tone-${r.tone || 'night'} ${jointClass}"
+          style="top: ${top}px; height: ${height}px;"
         >
+          ${jointClass ? `<span class="w-1 h-3.5 rounded-full bg-[#DAE2DB]/35 mr-2.5 shrink-0"></span>` : ''}
           <span class="font-serif-editorial ${isCompact ? 'text-base' : 'text-lg'} font-semibold tracking-tight truncate">
             ${r.title.toLowerCase()}
           </span>
@@ -1369,9 +1383,17 @@ class WabiSabiCalendarApp {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new WabiSabiCalendarApp();
+function bootApp() {
+  if (!window.app) {
+    new WabiSabiCalendarApp();
+  }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}

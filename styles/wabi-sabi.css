@@ -215,6 +215,23 @@ html, body {
   pointer-events: none;
 }
 
+/* articulação dos blocos sequenciais matinais */
+.routine-joint-top {
+  border-radius: 12px 12px 4px 4px;
+  border-bottom: 1.5px solid rgba(245, 241, 232, 0.22);
+}
+
+.routine-joint-mid {
+  border-radius: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1.5px solid rgba(245, 241, 232, 0.22);
+}
+
+.routine-joint-bottom {
+  border-radius: 4px 4px 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .routine-tone-moss {
   background-color: var(--routine-moss-bg);
   border: 1px solid var(--routine-moss-border);

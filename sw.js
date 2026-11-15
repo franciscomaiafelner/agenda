@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ma-wabi-sabi-agenda-v6';
+const CACHE_NAME = 'ma-wabi-sabi-agenda-v8';
 const ASSETS = [
   './',
   './index.html',

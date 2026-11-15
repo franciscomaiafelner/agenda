@@ -8,7 +8,7 @@ export const DEFAULT_ROUTINE_RULES = [
     id: 'routine-passeio',
     title: 'passeio',
     subtitle: '',
-    tone: 'moss',
+    tone: 'night',
     start_minutes: 7 * 60,       // 07:00
     end_minutes: 7 * 60 + 30,    // 07:30
     days_of_week: [0, 1, 2, 3, 4, 5, 6],
@@ -20,7 +20,7 @@ export const DEFAULT_ROUTINE_RULES = [
     id: 'routine-reflexao',
     title: 'reflexão',
     subtitle: '',
-    tone: 'walnut',
+    tone: 'night',
     start_minutes: 7 * 60 + 30,  // 07:30
     end_minutes: 8 * 60 + 30,    // 08:30
     days_of_week: [0, 1, 2, 3, 4, 5, 6],
@@ -32,7 +32,7 @@ export const DEFAULT_ROUTINE_RULES = [
     id: 'routine-meditacao',
     title: 'meditação',
     subtitle: '',
-    tone: 'espresso',
+    tone: 'night',
     start_minutes: 8 * 60 + 30,  // 08:30
     end_minutes: 9 * 60,         // 09:00
     days_of_week: [0, 1, 2, 3, 4, 5, 6],
