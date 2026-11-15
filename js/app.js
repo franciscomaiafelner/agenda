@@ -541,7 +541,7 @@ class WabiSabiCalendarApp {
 
       html += `
         <div
-          onclick="event.stopPropagation(); window.app.openEditCategoryBlock('${b.id}')"
+          data-block-id="${b.id}"
           class="category-block ${meta.cssClass}"
           style="top: ${top + 1}px; height: ${height - 2}px;"
         >
@@ -606,10 +606,20 @@ class WabiSabiCalendarApp {
 
     const startPress = (clientX, clientY, target) => {
       if (
-        target.closest('.category-block') ||
         target.closest('.routine-block') ||
         target.closest('.voice-note-pill')
       ) {
+        return;
+      }
+
+      const catBlockEl = target.closest('.category-block');
+      if (catBlockEl) {
+        const blockId = catBlockEl.dataset.blockId;
+        this.longPressStartPos = { x: clientX, y: clientY };
+        this.longPressTimer = setTimeout(() => {
+          if (navigator.vibrate) navigator.vibrate(18);
+          this.openEditCategoryBlock(blockId);
+        }, 380);
         return;
       }
 
@@ -668,6 +678,10 @@ class WabiSabiCalendarApp {
     });
     canvas.addEventListener('mouseup', cancelPress);
     canvas.addEventListener('mouseleave', cancelPress);
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
 
     canvas.addEventListener('dblclick', (e) => {
       if (
