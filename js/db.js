@@ -242,11 +242,12 @@ class AgendaDatabase {
         const localMap = new Map(existingLocal.map((b) => [b.id, b]));
         for (const b of blocks) {
           const prev = localMap.get(b.id);
+          const hasRating = b.rating !== undefined && b.rating !== null;
           await this.idbPut('category_blocks', {
             ...b,
             task_name: b.task_name ?? prev?.task_name ?? '',
-            rating: b.rating !== undefined && b.rating !== null ? b.rating : (prev?.rating ?? null),
-            notified_end: Boolean(b.notified_at || prev?.notified_end)
+            rating: hasRating ? b.rating : (prev?.rating ?? null),
+            notified_end: Boolean(hasRating || prev?.notified_end)
           });
         }
       }
@@ -391,6 +392,49 @@ class AgendaDatabase {
         headers: this.supabaseHeaders()
       }).catch(() => {});
     }
+  }
+
+  async savePushSubscription(subObj) {
+    if (!this.hasSupabase() || !subObj || !subObj.endpoint) return false;
+    try {
+      const tzOffsetMinutes = -new Date().getTimezoneOffset();
+      const payload = {
+        endpoint: subObj.endpoint,
+        subscription_json: {
+          ...subObj,
+          tz_offset_minutes: tzOffsetMinutes
+        }
+      };
+      const res = await fetch(
+        this.supabaseRestUrl('push_subscriptions', 'on_conflict=endpoint'),
+        {
+          method: 'POST',
+          headers: this.supabaseHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+          body: JSON.stringify(payload)
+        }
+      );
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async triggerEdgeFunctionCheck(extraPayload = {}) {
+    if (!this.hasSupabase() || !ENV_CONFIG.EDGE_FUNCTION_URL) return null;
+    try {
+      const tzOffsetMinutes = -new Date().getTimezoneOffset();
+      const res = await fetch(ENV_CONFIG.EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: this.supabaseHeaders(),
+        body: JSON.stringify({
+          name: 'agenda',
+          tz_offset_minutes: tzOffsetMinutes,
+          ...extraPayload
+        })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
   }
 }
 

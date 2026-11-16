@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ma-wabi-sabi-agenda-v12';
+const CACHE_NAME = 'ma-wabi-sabi-agenda-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let payload = {
     title: 'bloco concluído',
-    body: 'toque para avaliar de 0 a 5 estrelas',
+    body: 'toque para avaliar de 1 a 5 estrelas',
     blockId: null
   };
 
@@ -64,13 +64,22 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: './icons/icon.svg',
-      badge: './icons/icon.svg',
-      tag: payload.blockId ? `rate-${payload.blockId}` : 'block-rating',
-      data: { blockId: payload.blockId }
-    })
+    Promise.all([
+      self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: './icons/icon.svg',
+        badge: './icons/icon.svg',
+        tag: payload.blockId ? `rate-${payload.blockId}` : 'block-rating',
+        data: { blockId: payload.blockId }
+      }),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        if (payload.blockId) {
+          for (const client of clients) {
+            client.postMessage({ type: 'OPEN_RATING_SHEET', blockId: payload.blockId });
+          }
+        }
+      })
+    ])
   );
 });
 

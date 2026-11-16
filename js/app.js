@@ -8,6 +8,18 @@ import {
   VoiceNoteRecorder,
   processVoiceNoteWithAI
 } from './ai-pipeline.js';
+import { ENV_CONFIG } from './config.js';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const START_HOUR = 7;   // 07:00
 const END_HOUR = 22;    // 22:00
@@ -94,6 +106,7 @@ class WabiSabiCalendarApp {
     this.showTranscriptInModal = false;
     this.activeAudioElement = null;
     this.isPlayingAudio = false;
+    this.pushSubscribed = false;
 
     this.init();
   }
@@ -106,6 +119,7 @@ class WabiSabiCalendarApp {
     this.setupNotificationListeners();
     this.render();
     this.checkFinishedBlocks();
+    this.ensurePushNotificationsEnabled(false);
 
     // Sincroniza com o Supabase em background sem bloquear a renderização inicial
     if (agendaDB.hasSupabase()) {
@@ -113,6 +127,7 @@ class WabiSabiCalendarApp {
         if (res?.ok) {
           await this.reloadData();
           this.render();
+          this.checkFinishedBlocks();
         }
       });
     }
@@ -120,7 +135,7 @@ class WabiSabiCalendarApp {
     setInterval(() => {
       if (this.viewMode === 'day') this.renderTimeline();
       this.checkFinishedBlocks();
-    }, 20000);
+    }, 15000);
   }
 
   setupNotificationListeners() {
@@ -140,6 +155,91 @@ class WabiSabiCalendarApp {
     };
     window.addEventListener('hashchange', checkHash);
     setTimeout(checkHash, 300);
+
+    // Quando o iPhone é desbloqueado ou a PWA volta a primeiro plano, verifica imediatamente os blocos
+    const onWakeUp = async () => {
+      if (document.visibilityState === 'hidden') return;
+      if (this.viewMode === 'day') this.renderTimeline();
+      await this.checkFinishedBlocks();
+      if (agendaDB.hasSupabase()) {
+        const res = await agendaDB.syncFromSupabase();
+        if (res?.ok) {
+          await this.reloadData();
+          this.render();
+          await this.checkFinishedBlocks();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onWakeUp);
+    window.addEventListener('pageshow', onWakeUp);
+    window.addEventListener('focus', onWakeUp);
+  }
+
+  needsNotificationPermissionUI() {
+    if (!('Notification' in window)) return false;
+    return Notification.permission !== 'granted';
+  }
+
+  async ensurePushNotificationsEnabled(fromUserGesture = false) {
+    if (!('Notification' in window)) {
+      if (fromUserGesture) {
+        this.showToast('adicione a app ao ecrã principal no safari para notificações');
+      }
+      return false;
+    }
+
+    try {
+      let perm = Notification.permission;
+      if (perm === 'default' && fromUserGesture) {
+        perm = await Notification.requestPermission();
+      }
+      if (perm !== 'granted') {
+        if (fromUserGesture && perm === 'denied') {
+          this.showToast('ative as notificações da app nas definições do iphone');
+        }
+        this.renderHeader();
+        return false;
+      }
+
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg.pushManager && ENV_CONFIG.VAPID_PUBLIC_KEY) {
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(ENV_CONFIG.VAPID_PUBLIC_KEY)
+            });
+          }
+          if (sub) {
+            await agendaDB.savePushSubscription(sub.toJSON());
+            this.pushSubscribed = true;
+          }
+        }
+      }
+      this.renderHeader();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async activateNotificationsClick() {
+    const ok = await this.ensurePushNotificationsEnabled(true);
+    if (ok) {
+      this.showToast('notificações ativas');
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification('notificações ativas', {
+            body: 'será avisado assim que cada bloco terminar',
+            icon: './icons/icon.svg',
+            tag: 'notif-enabled'
+          });
+        }
+      } catch (e) {}
+      await this.checkFinishedBlocks();
+    }
   }
 
   renderDiscreteStars(rating) {
@@ -174,14 +274,12 @@ class WabiSabiCalendarApp {
   }
 
   async triggerBlockEndNotification(block) {
+    agendaDB.triggerEdgeFunctionCheck({ block_id: block.id });
     if (!('Notification' in window)) return;
     try {
-      if (Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
       if (Notification.permission === 'granted') {
         const title = `${block.category.toLowerCase()} concluída`;
-        const body = `${block.task_name ? block.task_name + ' · ' : ''}avaliar bloco de 0 a 5 estrelas`;
+        const body = `${block.task_name ? block.task_name + ' · ' : ''}avaliar bloco de 1 a 5 estrelas`;
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
           await reg.showNotification(title, {
@@ -439,15 +537,32 @@ class WabiSabiCalendarApp {
       })
       .join('');
 
-    headerEl.innerHTML = `
-      <div class="flex items-center justify-between gap-3">
+    const showNotifBtn = this.needsNotificationPermissionUI();
+    const notifBtnHtml = showNotifBtn
+      ? `
         <button
-          onclick="window.app.setViewMode('month')"
-          class="tactile-btn flex items-center gap-1.5 py-1 text-[#231C17] hover:opacity-75"
+          onclick="window.app.activateNotificationsClick()"
+          class="tactile-btn flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAE3D5] border border-[#D4CBB9] text-xs font-medium text-[#52463B]"
+          title="ativar notificações de fim de bloco"
         >
-          <span class="text-xl leading-none font-light text-[#52463B]">&lt;</span>
-          <span class="font-serif-editorial text-2xl font-semibold tracking-tight">${monthName}</span>
+          <span>🔔</span>
+          <span>alertas</span>
         </button>
+      `
+      : '';
+
+    headerEl.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <button
+            onclick="window.app.setViewMode('month')"
+            class="tactile-btn flex items-center gap-1.5 py-1 text-[#231C17] hover:opacity-75"
+          >
+            <span class="text-xl leading-none font-light text-[#52463B]">&lt;</span>
+            <span class="font-serif-editorial text-2xl font-semibold tracking-tight">${monthName}</span>
+          </button>
+          ${notifBtnHtml}
+        </div>
 
         <div class="grid grid-cols-3 gap-1.5">
           ${pillsHtml}
@@ -1111,6 +1226,9 @@ class WabiSabiCalendarApp {
   }
 
   async saveCategoryFromSheet() {
+    // No iOS Safari PWA, Notification.requestPermission() tem de ser invocado diretamente num gesto do utilizador (tap em "guardar")
+    this.ensurePushNotificationsEnabled(true);
+
     const inputEl = document.getElementById('draft-task-name-input');
     if (inputEl) this.draftTaskName = inputEl.value;
 
@@ -1139,13 +1257,17 @@ class WabiSabiCalendarApp {
       ? this.allCategoryBlocks.find((b) => b.id === this.editingBlockId)
       : null;
 
+    const finalRating = this.draftRating !== undefined ? this.draftRating : (existing?.rating ?? null);
+    const hasRating = finalRating !== null && finalRating !== undefined;
+    const endChanged = existing && existing.end_minutes !== end;
+
     const block = {
       id: this.editingBlockId || `cat-${dateStr}-${Date.now()}`,
       date_str: dateStr,
       category: this.draftCategory,
       task_name: (this.draftTaskName || '').trim().toLowerCase(),
-      rating: this.draftRating !== undefined ? this.draftRating : (existing?.rating ?? null),
-      notified_end: existing?.notified_end || (this.draftRating !== null && this.draftRating !== undefined),
+      rating: finalRating,
+      notified_end: hasRating ? true : (endChanged ? false : Boolean(existing?.notified_end)),
       start_minutes: start,
       end_minutes: end
     };
@@ -1154,6 +1276,8 @@ class WabiSabiCalendarApp {
     await this.reloadData();
     this.closeAllSheets();
     this.render();
+    this.checkFinishedBlocks();
+    agendaDB.triggerEdgeFunctionCheck({ wait_for_block_id: block.id });
   }
 
   async deleteCurrentCategoryBlock() {
